@@ -99,34 +99,56 @@ def CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=F
             alpha_tags.append(alpha_matrix[t - 1, s - 2])
         alpha_tag = max(alpha_tags) if force_align else sum(alpha_tags)
         alpha = alpha_tag * p
-        backpointer = math.argmax(alpha_tags) if force_align else None
+        backpointer = np.argmax(alpha_tags) if force_align else -1
         return alpha, backpointer
 
     for t in range(0, T):
         for s in range(0, padded_sequence_length):
             alpha_matrix[t, s], backpointers_matrix[t, s] = alpha_and_backpointer(t, s)
 
-    return alpha_matrix, backpointers_matrix
+    best_path_coordinates = []
+    best_path = []
+    if force_align:
+        timestep = T - 1
+        padded_sequence_index = padded_sequence_length - 1 if alpha_matrix[timestep, padded_sequence_length - 1] >= alpha_matrix[timestep, padded_sequence_length - 2] else padded_sequence_length - 2
+        best_path_coordinates.append((timestep, padded_sequence_index))
+        best_path.append(alphabet_labels[padded_sequence_indices[padded_sequence_index]])
+        prev = backpointers_matrix[timestep, padded_sequence_index]
+        while prev != -1:
+            timestep -= 1
+            padded_sequence_index -= prev
+            best_path_coordinates.append((timestep, padded_sequence_index))
+            best_path.append(alphabet_labels[padded_sequence_indices[padded_sequence_index]])
+            prev = backpointers_matrix[timestep, padded_sequence_index]
+        best_path_coordinates.reverse()
+        best_path.reverse()
+
+    return alpha_matrix, best_path_coordinates, best_path
 
 
-def plot_alpha_matrix(alpha_matrix, padded_sequence_labels):
-    alpha_matrix = alpha_matrix.T
-    plt.imshow(alpha_matrix, cmap='viridis', interpolation='nearest')
-    plt.title('Alpha Matrix')
+def plot_alpha_matrix(filename, title, padded_sequence_labels, alpha_matrix, best_path_coordinates=None, best_path=None):
+    alpha_matrix_T = alpha_matrix.T
+    plt.imshow(alpha_matrix_T, cmap='viridis', interpolation='nearest')
+    plt.suptitle(title)
+    if best_path is not None:
+        plt.title(' '.join(best_path))
     plt.xlabel('Timestep')
     plt.ylabel('Padded Sequence Label')
+    plt.yticks(ticks=range(len(padded_sequence_labels)), labels=padded_sequence_labels)
 
-    y_labels = [padded_sequence_labels[i] for i in range(alpha_matrix.shape[0])]
-    plt.yticks(ticks=range(len(y_labels)), labels=y_labels)
-
-    rows, cols = alpha_matrix.shape
+    rows, cols = alpha_matrix_T.shape
     for i in range(rows):
         for j in range(cols):
-            plt.text(j, i, f'{alpha_matrix[i, j]:.2f}',
+            plt.text(j, i, f'{alpha_matrix_T[i, j]:.2f}',
                      ha='center', va='center',
-                     color='white' if alpha_matrix[i, j] < 0.5 else 'black')
+                     color='white' if alpha_matrix_T[i, j] < 0.5 else 'black')
 
-    plt.savefig('alpha_matrix.jpg')
+    if best_path_coordinates is not None:
+        for (y1, x1), (y2, x2) in zip(best_path_coordinates[:-1], best_path_coordinates[1:]):
+            plt.arrow(y1, x1, y2 - y1, x2 - x1, color='red',
+                      head_width=0.2, head_length=0.2, length_includes_head=True)
+
+    plt.savefig(filename)
     plt.close()
 
 
@@ -153,7 +175,7 @@ if __name__ == '__main__':
     padded_sequence_indices = sequence_to_padded_sequence_indices(sequence, alphabet_labels, blank_index)
     padded_sequence_labels = [alphabet_labels[i] for i in padded_sequence_indices]
     #
-    alpha_matrix, _ = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index)
-    plot_alpha_matrix(alpha_matrix, padded_sequence_labels)
-    alpha_matrix_force, backpointers_matrix_force = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=True)
-    plot_alpha_matrix(alpha_matrix, padded_sequence_labels)
+    alpha_matrix, _, _ = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index)
+    plot_alpha_matrix('alpha_matrix.jpg', 'Alpha Matrix', padded_sequence_labels, alpha_matrix)
+    alpha_matrix_force, best_path_coordinates_force, best_path_force = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=True)
+    plot_alpha_matrix('alpha_matrix_force.jpg', 'Alpha Matrix Force Alignment', padded_sequence_labels, alpha_matrix_force, best_path_coordinates_force, best_path_force)
