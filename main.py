@@ -1,5 +1,6 @@
 import math
 import os
+import pickle as pkl
 from collections import defaultdict
 
 import librosa
@@ -59,7 +60,7 @@ def plot_melspectrograms(recordings):
             ax.set_title(f'{x}: {name}')
 
     plt.tight_layout()
-    plt.savefig('melspectrograms.jpg')
+    plt.savefig(os.path.join(BASE_DIR, 'melspectrograms.jpg'))
     plt.close()
 
 
@@ -81,6 +82,14 @@ def sequence_to_padded_sequence_indices(sequence, alphabet_labels, blank_index):
     return padded_sequence_indices
 
 
+def prob_to_log_prob(p):
+    return math.log(p) if p > 0 else -math.inf
+
+
+def log_prob_to_prob(lp):
+    return math.exp(lp) if lp > -math.inf else 0
+
+
 def CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=False):
     padded_sequence_indices = sequence_to_padded_sequence_indices(sequence, alphabet_labels, blank_index)
 
@@ -91,14 +100,14 @@ def CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=F
     def alpha_and_backpointer(t, s):
         p = pred[t, padded_sequence_indices[s]]
         if t == 0:
-            return p if s <= 1 else 0, -1
-        alpha_tags = [alpha_matrix[t - 1, s]]
+            return prob_to_log_prob(p if s <= 1 else 0), -1
+        alpha_tags = [log_prob_to_prob(alpha_matrix[t - 1, s])]
         if s >= 1:
-            alpha_tags.append(alpha_matrix[t - 1, s - 1])
+            alpha_tags.append(log_prob_to_prob(alpha_matrix[t - 1, s - 1]))
         if s >= 2 and not (padded_sequence_indices[s] == blank_index or (s >= 2 and padded_sequence_indices[s] == padded_sequence_indices[s - 2])):
-            alpha_tags.append(alpha_matrix[t - 1, s - 2])
+            alpha_tags.append(log_prob_to_prob(alpha_matrix[t - 1, s - 2]))
         alpha_tag = max(alpha_tags) if force_align else sum(alpha_tags)
-        alpha = alpha_tag * p
+        alpha = prob_to_log_prob(alpha_tag) + prob_to_log_prob(p)
         backpointer = np.argmax(alpha_tags) if force_align else -1
         return alpha, backpointer
 
@@ -126,7 +135,10 @@ def CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=F
     return alpha_matrix, best_path_coordinates, best_path
 
 
-def plot_alpha_matrix(filename, title, padded_sequence_labels, alpha_matrix, best_path_coordinates=None, best_path=None):
+def plot_alpha_matrix(filename, title, alpha_matrix, best_path_coordinates=None, best_path=None):
+    padded_sequence_indices = sequence_to_padded_sequence_indices(sequence, alphabet_labels, blank_index)
+    padded_sequence_labels = [alphabet_labels[i] for i in padded_sequence_indices]
+
     alpha_matrix_T = alpha_matrix.T
     plt.imshow(alpha_matrix_T, cmap='viridis', interpolation='nearest')
     plt.suptitle(title)
@@ -148,7 +160,7 @@ def plot_alpha_matrix(filename, title, padded_sequence_labels, alpha_matrix, bes
             plt.arrow(y1, x1, y2 - y1, x2 - x1, color='red',
                       head_width=0.2, head_length=0.2, length_includes_head=True)
 
-    plt.savefig(filename)
+    plt.savefig(os.path.join(BASE_DIR, filename))
     plt.close()
 
 
@@ -172,10 +184,16 @@ if __name__ == '__main__':
     pred[4][2] = 1.00
     alphabet_labels, blank_index = {0: 'a', 1: 'b', 2: '^'}, 2
     sequence = 'aba'
-    padded_sequence_indices = sequence_to_padded_sequence_indices(sequence, alphabet_labels, blank_index)
-    padded_sequence_labels = [alphabet_labels[i] for i in padded_sequence_indices]
     #
     alpha_matrix, _, _ = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index)
-    plot_alpha_matrix('alpha_matrix.jpg', 'Alpha Matrix', padded_sequence_labels, alpha_matrix)
+    plot_alpha_matrix('alpha_matrix.jpg', 'Log Alpha Matrix', alpha_matrix)
     alpha_matrix_force, best_path_coordinates_force, best_path_force = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=True)
-    plot_alpha_matrix('alpha_matrix_force.jpg', 'Alpha Matrix Force Alignment', padded_sequence_labels, alpha_matrix_force, best_path_coordinates_force, best_path_force)
+    plot_alpha_matrix('alpha_matrix_force.jpg', 'Log Alpha Matrix Force Alignment', alpha_matrix_force, best_path_coordinates_force, best_path_force)
+    #
+    data = pkl.load(open(os.path.join(BASE_DIR, 'force_align.pkl'), 'rb'))
+    pred = data['acoustic_model_out_probs']
+    alphabet_labels, blank_index = data['label_mapping'], 28
+    sequence = data['text_to_align']
+    #
+    alpha_matrix_force_pkl, best_path_coordinates_force_pkl, best_path_force_pkl = CTC_forward_pass(sequence, pred, alphabet_labels, blank_index, force_align=True)
+    plot_alpha_matrix('alpha_matrix_force_pkl.jpg', 'Log Alpha Matrix Force Alignment Pickle', alpha_matrix_force_pkl, best_path_coordinates_force_pkl, best_path_force_pkl)
