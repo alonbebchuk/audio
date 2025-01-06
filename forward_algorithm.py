@@ -84,15 +84,13 @@ class CTC:
         transpose_log_alpha_matrix = self.log_alpha_matrix.T
 
         rows, cols = transpose_log_alpha_matrix.shape
-        fig_width = max(10, cols // 10)
-        fig_height = max(5, rows // 10)
-        plt.figure(figsize=(fig_width, fig_height))
+        plt.figure(figsize=(cols, rows))
 
-        plt.imshow(transpose_log_alpha_matrix, aspect='auto', cmap='viridis')
-        plt.suptitle(title)
-        plt.xlabel('Timestep')
-        plt.ylabel('Padded Sequence Label')
-        plt.yticks(ticks=range(len(self.padded_sequence_labels)), labels=self.padded_sequence_labels)
+        plt.imshow(transpose_log_alpha_matrix, aspect='auto', cmap='viridis', interpolation='nearest')
+        plt.suptitle(title, fontsize=16)
+        plt.xlabel('Timestep', fontsize=14)
+        plt.ylabel('Padded Sequence Label', fontsize=14)
+        plt.yticks(ticks=range(len(self.padded_sequence_labels)), labels=self.padded_sequence_labels, fontsize=12)
 
         rows, cols = transpose_log_alpha_matrix.shape
         for i in range(rows):
@@ -102,7 +100,8 @@ class CTC:
         if self.force_align:
             plt.title(''.join(self.best_path))
             for (x1, y1), (x2, y2) in zip(self.best_path_coordinates[:-1], self.best_path_coordinates[1:]):
-                plt.arrow(x1, y1, x2 - x1, y2 - y1, color='red', head_width=0.2, head_length=0.2, length_includes_head=True)
+                plt.arrow(x1, y1, x2 - x1, y2 - y1, color='red', lw=1.5, head_width=0.3, head_length=0.3, length_includes_head=True)
 
-        plt.savefig(os.path.join(BASE_DIR, filename))
+        plt.tight_layout(pad=3.0)
+        plt.savefig(os.path.join(BASE_DIR, filename), bbox_inches='tight')
         plt.close()
