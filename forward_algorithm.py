@@ -104,14 +104,14 @@ class CTC:
 
             for (i1, j1), (i2, j2) in zip(self.best_path_coordinates[:-1], self.best_path_coordinates[1:]):
                 plt.arrow(i1, j1, i2 - i1, j2 - j1, color='red', head_length=0.2, head_width=0.2, length_includes_head=True)
-                plt.text(i1, j1, f'{transpose_log_alpha_matrix[j1, i1]:.2f}', ha='center', va='center', color='white')
+                plt.text(i1, j1, f'{transpose_log_alpha_matrix[j1, i1]:.1f}', ha='center', va='center', color='white')
             i, j = self.best_path_coordinates[-1]
-            plt.text(i, j, f'{transpose_log_alpha_matrix[j, i]:.2f}', ha='center', va='center', color='white')
+            plt.text(i, j, f'{transpose_log_alpha_matrix[j, i]:.1f}', ha='center', va='center', color='white')
         else:
             rows, cols = transpose_log_alpha_matrix.shape
             for i in range(rows):
                 for j in range(cols):
-                    plt.text(j, i, f'{transpose_log_alpha_matrix[i, j]:.2f}', ha='center', va='center', color='white')
+                    plt.text(j, i, f'{transpose_log_alpha_matrix[i, j]:.1f}', ha='center', va='center', color='white')
 
         plt.tight_layout(pad=3.0)
         plt.savefig(os.path.join(BASE_DIR, filename), bbox_inches='tight', dpi=300)
