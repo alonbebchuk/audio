@@ -84,8 +84,8 @@ class CTC:
         transpose_log_alpha_matrix = self.log_alpha_matrix.T
 
         rows, cols = transpose_log_alpha_matrix.shape
-        fig_width = max(10, cols // 5)
-        fig_height = max(5, rows // 5)
+        fig_width = cols // 5 if cols > 10 else cols
+        fig_height = rows // 5 if rows > 10 else rows
         plt.figure(figsize=(fig_width, fig_height))
 
         plt.imshow(transpose_log_alpha_matrix, aspect='auto', cmap='viridis', interpolation='nearest')
@@ -99,16 +99,20 @@ class CTC:
             spine.set_edgecolor('black')
             spine.set_linewidth(2)
 
-        rows, cols = transpose_log_alpha_matrix.shape
-        for i in range(rows):
-            for j in range(cols):
-                plt.text(j, i, f'{transpose_log_alpha_matrix[i, j]:.2f}', ha='center', va='center', color='white' if transpose_log_alpha_matrix[i, j] < 0.5 else 'black')
-
         if self.force_align:
             plt.title(''.join(self.best_path))
-            for (x1, y1), (x2, y2) in zip(self.best_path_coordinates[:-1], self.best_path_coordinates[1:]):
-                plt.arrow(x1, y1, x2 - x1, y2 - y1, color='red', length_includes_head=True)
+
+            for (i1, j1), (i2, j2) in zip(self.best_path_coordinates[:-1], self.best_path_coordinates[1:]):
+                plt.arrow(i1, j1, i2 - i1, j2 - j1, color='red', head_length=0.2, head_width=0.2, length_includes_head=True)
+                plt.text(i1, j1, f'{transpose_log_alpha_matrix[j1, i1]:.2f}', ha='center', va='center', color='white')
+            i, j = self.best_path_coordinates[-1]
+            plt.text(i, j, f'{transpose_log_alpha_matrix[j, i]:.2f}', ha='center', va='center', color='white')
+        else:
+            rows, cols = transpose_log_alpha_matrix.shape
+            for i in range(rows):
+                for j in range(cols):
+                    plt.text(j, i, f'{transpose_log_alpha_matrix[i, j]:.2f}', ha='center', va='center', color='white')
 
         plt.tight_layout(pad=3.0)
-        plt.savefig(os.path.join(BASE_DIR, filename), bbox_inches='tight')
+        plt.savefig(os.path.join(BASE_DIR, filename), bbox_inches='tight', dpi=300)
         plt.close()
