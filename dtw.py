@@ -321,10 +321,10 @@ def question3():
         axes[idx, 1].set_ylabel("True")
 
         print(
-            f"use_agc: {use_agc}, normalize_by_length: {normalize_by_length}, training_accuracy: {training_accuracy:.2%}, eval_accuracy: {eval_accuracy:.2%}"
+            f"use_agc: {use_agc}, normalize_by_length: {normalize_by_length}, raining_accuracy: {training_accuracy:.2%}, eval_accuracy: {eval_accuracy:.2%}"
         )
 
     plt.tight_layout()
-    plt.savefig(os.path.join(BASE_DIR, "plots/all_models_comparison.pdf"))
+    plt.savefig(os.path.join(BASE_DIR, "plots/all_models_comparison.jpg"))
     plt.close()
-    print("Plots saved to plots/all_models_comparison.pdf")
+    print("Plots saved to plots/all_models_comparison.jpg")

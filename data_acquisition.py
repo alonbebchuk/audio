@@ -73,5 +73,5 @@ def question2(recordings):
             ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
 
     plt.tight_layout()
-    plt.savefig(os.path.join(BASE_DIR, 'plots/melspectrograms.pdf'))
+    plt.savefig(os.path.join(BASE_DIR, 'plots/melspectrograms.jpg'))
     plt.close()
