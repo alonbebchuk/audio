@@ -114,5 +114,5 @@ class CTC:
                     plt.text(j, i, f'{transpose_log_alpha_matrix[i, j]:.1f}', ha='center', va='center', color='white')
 
         plt.tight_layout(pad=3.0)
-        plt.savefig(os.path.join(BASE_DIR, filename), bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(BASE_DIR, f'plots/{filename}'), bbox_inches='tight', dpi=300)
         plt.close()

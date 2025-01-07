@@ -1,3 +1,4 @@
+import glob
 import os
 from collections import defaultdict
 
@@ -8,8 +9,8 @@ import numpy as np
 from matplotlib.ticker import MaxNLocator
 from scipy.signal import resample
 
-from consts import ORIGINAL_SAMPLE_RATE, TARGET_SAMPLE_RATE, WIN_LENGTH_SAMPLES, HOP_LENGTH_SAMPLES, N_FILTER_BANKS, NUM_DIGITS
-BASE_DIR = os.path.dirname(__file__)
+from consts import BASE_DIR, ORIGINAL_SAMPLE_RATE, TARGET_SAMPLE_RATE, WIN_LENGTH_SAMPLES, HOP_LENGTH_SAMPLES, N_FILTER_BANKS, NUM_DIGITS
+
 
 def get_resampled_audio(filepath):
     loaded_audio, loaded_rate = librosa.load(filepath, sr=ORIGINAL_SAMPLE_RATE)
@@ -26,14 +27,11 @@ def get_gender_name_digit(filepath):
 
     return gender, name, digit
 
-import glob
+
 def get_recordings():
     recordings = defaultdict(lambda: defaultdict(lambda: defaultdict()))
 
     for filepath in glob.glob(os.path.join(BASE_DIR, 'recordings', '**', '*.wav'), recursive=True):
-        # for filename in filenames:
-        #     filepath = os.path.join(root, filename)
-
         gender, name, digit = get_gender_name_digit(filepath)
         resampled_audio = get_resampled_audio(filepath)
 
@@ -75,5 +73,5 @@ def question2(recordings):
             ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
 
     plt.tight_layout()
-    plt.savefig(os.path.join(BASE_DIR, 'melspectrograms.jpg'))
+    plt.savefig(os.path.join(BASE_DIR, 'plots/melspectrograms.pdf'))
     plt.close()

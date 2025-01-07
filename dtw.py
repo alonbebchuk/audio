@@ -1,27 +1,24 @@
-from data_acquisition import question1, get_recordings, get_melspectrogram
-from datasets import Dataset
+import os
+
+import librosa
+import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+from datasets import Dataset
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import accuracy_score
+# Get predictions for all samples in the training set
+from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
-from sklearn.base import BaseEstimator
+
 from consts import (
-    ORIGINAL_SAMPLE_RATE,
+    BASE_DIR,
     TARGET_SAMPLE_RATE,
     WIN_LENGTH_SAMPLES,
     HOP_LENGTH_SAMPLES,
     N_FILTER_BANKS,
-    NUM_DIGITS,
 )
-import librosa
-from sklearn.metrics import accuracy_score, classification_report
-from sklearn.base import BaseEstimator, ClassifierMixin
-# Get predictions for all samples in the training set
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
-import os
-
+from data_acquisition import question1, get_recordings, get_melspectrogram
 
 # python3 dtw.py
 """
@@ -46,9 +43,6 @@ h. Try to improve results by:
     ii. Normalizing the distance w.r.t the length of each audio file
     iii. Plot the confusion matrix
 """
-
-
-import numpy as np
 
 
 def dtw_forward(x, y):
@@ -119,41 +113,41 @@ def apply_agc(audio, frame_length=2048, attack_time=0.01, release_time=0.1, targ
     """
     # Convert target RMS from dB to linear
     target_rms_linear = 10 ** (target_rms / 20)
-    
+
     # Calculate time constants in frames
     attack_coef = np.exp(-1 / (attack_time * TARGET_SAMPLE_RATE / frame_length))
     release_coef = np.exp(-1 / (release_time * TARGET_SAMPLE_RATE / frame_length))
-    
+
     # Process audio in frames
     num_frames = len(audio) // frame_length
     gain = 1.0
     processed_audio = np.zeros_like(audio)
-    
+
     for i in range(num_frames):
         frame = audio[i * frame_length:(i + 1) * frame_length]
         frame_rms = np.sqrt(np.mean(frame ** 2))
-        
+
         # Avoid division by zero
         if frame_rms < 1e-10:
             frame_rms = 1e-10
-            
+
         # Calculate desired gain
         desired_gain = target_rms_linear / frame_rms
-        
+
         # Apply time constants
         if desired_gain > gain:
             gain = attack_coef * gain + (1 - attack_coef) * desired_gain
         else:
             gain = release_coef * gain + (1 - release_coef) * desired_gain
-            
+
         # Apply gain to frame
         processed_audio[i * frame_length:(i + 1) * frame_length] = frame * gain
-    
+
     # Process remaining samples
     if len(audio) % frame_length != 0:
         remaining = audio[num_frames * frame_length:]
         processed_audio[num_frames * frame_length:] = remaining * gain
-    
+
     return processed_audio
 
 
@@ -289,31 +283,29 @@ class DTWModel(BaseEstimator, ClassifierMixin):
         return distance_matrix, self.evaluate(train_ds), self.evaluate(eval_ds), self.predict(eval_ds), eval_ds["digit"]
 
 
-def main():
+def question3():
     raw_database, train_ds, eval_ds = get_datasets()
 
-    os.makedirs("plots", exist_ok=True)
-    
     # Create a 4x2 grid of subplots
     fig, axes = plt.subplots(4, 2, figsize=(20, 32))
     fig.suptitle("DTW Model Comparison", fontsize=16)
-    
+
     configs = [(False, False), (True, False), (False, True), (True, True)]
-    
+
     for idx, (use_agc, normalize_by_length) in enumerate(configs):
         model = DTWModel(raw_database, use_agc=use_agc, normalize_by_length=normalize_by_length)
         distance_matrix, training_accuracy, eval_accuracy, eval_predictions, eval_true = model.plot_distance_matrix(
             train_ds,
             eval_ds,
         )
-        
+
         # Plot distance matrix
         sns.heatmap(
             distance_matrix,
             annot=True,
             fmt=".2f",
             xticklabels=range(10),
-            yticklabels=[f"Speaker {i+1}" for i in range(4)],
+            yticklabels=[f"Speaker {i + 1}" for i in range(4)],
             ax=axes[idx, 0]
         )
         title = f"DTW Distance Matrix\nAGC: {use_agc}, Length Norm: {normalize_by_length}\nTrain Acc: {training_accuracy:.2%}, Eval Acc: {eval_accuracy:.2%}"
@@ -327,16 +319,12 @@ def main():
         axes[idx, 1].set_title(f"Confusion Matrix\nAGC: {use_agc}, Length Norm: {normalize_by_length}\nTrain Acc: {training_accuracy:.2%}, Eval Acc: {eval_accuracy:.2%}")
         axes[idx, 1].set_xlabel("Predicted")
         axes[idx, 1].set_ylabel("True")
-        
+
         print(
             f"use_agc: {use_agc}, normalize_by_length: {normalize_by_length}, training_accuracy: {training_accuracy:.2%}, eval_accuracy: {eval_accuracy:.2%}"
         )
-    
+
     plt.tight_layout()
-    plt.savefig("plots/all_models_comparison.pdf")
+    plt.savefig(os.path.join(BASE_DIR, "plots/all_models_comparison.pdf"))
     plt.close()
     print("Plots saved to plots/all_models_comparison.pdf")
-
-
-if __name__ == "__main__":
-    main()

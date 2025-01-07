@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 # common
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(__file__)
 # data acquisition
 ORIGINAL_SAMPLE_RATE = 44100
 TARGET_SAMPLE_RATE = 16000
